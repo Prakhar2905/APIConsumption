@@ -1,0 +1,88 @@
+_schema-version: "3.2"
+ID: Trail4
+version: 0.0.1
+modules:
+- name: trail4-approuter
+  type: approuter.nodejs
+  path: trail4-approuter
+  requires:
+  - name: Trail4_html_repo_runtime
+  - name: bpmruleconsumeruaanew
+  - name: Business_Rule 
+  - name: Trail4-dest-srv
+    group: destinations
+    properties:
+      forwardAuthToken: false
+      name: ui5
+      url: https://ui5.sap.com
+  parameters:
+    disk-quota: 256M
+    memory: 256M
+- name: Trail4_ui_deployer
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: Trail4_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - ui.zip
+      name: ui
+      target-path: resources/
+- name: ui
+  type: html5
+  path: ui
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: Business_Rule
+  type: org.cloudfoundry.existing-service
+- name: bpmruleconsumeruaanew
+  type: com.sap.xs.uaa
+  parameters:
+     config:
+        xsappname: bpmruleconsumer-uaa-app
+        tenant-mode: dedicated
+        role-templates:
+           - name : UaaUser
+             description: Role template for accessing SAP Business Rule APIs.Editor via user token flow
+             scope-references:
+               - uaa.user
+- name: Trail4_html_repo_runtime
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-plan: app-runtime
+- name: Trail4_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-plan: app-host
+- name: Trail4-dest-srv
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: Trail4-dest-srv
+    service-plan: lite
+parameters:
+  deploy_mode: html5-repo
